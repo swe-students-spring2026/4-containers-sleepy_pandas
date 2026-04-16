@@ -1,4 +1,5 @@
 """Tests for app.config."""
+
 # pylint: disable=import-error
 
 from app.config import (
