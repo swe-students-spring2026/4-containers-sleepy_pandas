@@ -1,33 +1,48 @@
 """Tests for app.db."""
 
-from app.db import save_practice_session
+# pylint: disable=too-few-public-methods,import-error
+
+import pytest
+from app import db
 
 
-def test_save_practice_session():
-    """Test that a practice session can be saved."""
+def test_save_practice_session_calls_insert_one(monkeypatch):
+    """Test that a practice session is inserted and its ID is returned."""
     session = {
         "audio_file": "record_outputs/demo.wav",
         "duration_seconds": 6,
-        "transcript": ("Hello everyone um today I want to introduce myself"),
+        "transcript": "Hello everyone um today I want to introduce myself",
         "analysis": {
             "word_count": 8,
             "wpm": 80,
-            "filler_words": {
-                "um": 1,
-                "uh": 0,
-                "like": 0,
-                "you know": 0,
-                "literally": 0,
-                "actually": 0,
-                "basically": 0,
-                "i mean": 0,
-            },
-            "total_filler_count": 1,
-            "pace_feedback": "slowwww...",
-            "filler_feedback": ("Good fluency. Only a few filler words were used."),
         },
     }
 
-    inserted_id = save_practice_session(session)
+    class FakeInsertResult:
+        """Fake insert result."""
 
-    assert inserted_id is not None
+        inserted_id = "fake123"
+
+    class FakeCollection:
+        """Fake Mongo collection."""
+
+        def insert_one(self, inserted_session):
+            """Mock insert_one."""
+            assert inserted_session == session
+            return FakeInsertResult()
+
+    def fake_get_collection():
+        """Return fake collection."""
+        return FakeCollection()
+
+    monkeypatch.setattr(db, "get_collection", fake_get_collection)
+
+    inserted_id = db.save_practice_session(session)
+
+    assert inserted_id == "fake123"
+
+
+def test_save_practice_session_invalid_input():
+    """Test invalid input raises ValueError."""
+    with pytest.raises(ValueError):
+        db.save_practice_session("not a dictionary")
